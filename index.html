@@ -181,6 +181,11 @@
   @media(max-width:768px){
     .tab-btn{font-size:1rem;padding:9px 6px}
 
+    .sidebar-header{display:flex;align-items:center;gap:10px;text-align:left;padding:8px 10px}
+    .sidebar-header img{max-height:34px;max-width:70px;margin-bottom:0}
+    h1{font-size:1.2rem}
+    .subtitulo{font-size:0.65rem;margin-top:0}
+
     .sidebar{width:100%;order:1;max-height:48vh}
     #vista-mapa{flex-direction:column}
     #map{order:2;flex:1;min-height:52vh}
@@ -199,11 +204,10 @@
 
     .puerto-metrica,.est-puerto-metrica{min-width:44px}
 
-    .parados-dropdown-content{max-height:180px}
+    .parados-dropdown{display:none}
   }
 
   @media(max-width:420px){
-    h1{font-size:1.4rem}
     .tab-btn{font-size:0.85rem}
     .stat-box .num{font-size:1.25rem}
   }
@@ -261,7 +265,7 @@
       <img src="logo_priha.jpg" alt="PRIHA" onerror="this.classList.add('hidden')">
       <div>
         <h1>TRÁNSITO AIS · PARANÁ</h1>
-        <p class="subtitulo">Observatorio Fluvial</p>
+        <p class="subtitulo">Observatorio de Tierras</p>
       </div>
     </div>
 
@@ -347,7 +351,6 @@
 
       <div id="status"></div>
 
-      <a href="https://hidrografia.agpse.gob.ar/" target="_blank" class="btn-fuente">Ver fuente AGPSE</a>
     </div>
   </aside>
 
