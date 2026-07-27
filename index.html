@@ -8,7 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Teko:wght@500;700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Montserrat',sans-serif;background:#0f172a;color:#f8fafc;height:100vh;overflow:hidden;display:flex}
+  body{font-family:'Montserrat',sans-serif;background:#0f172a;color:#f8fafc;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+  /* TAB BAR */
+  .tab-bar{display:flex;background:#1e293b;border-bottom:1px solid rgba(255,255,255,.08);
+    flex-shrink:0;z-index:2500}
+  .tab-btn{flex:1;padding:10px;background:none;border:none;color:#94a3b8;font-family:'Teko',sans-serif;
+    font-size:1.15rem;letter-spacing:.03em;cursor:pointer;text-transform:uppercase;
+    border-bottom:3px solid transparent;transition:.15s}
+  .tab-btn:hover{color:#e2e8f0}
+  .tab-btn.activo{color:#fde047;border-bottom-color:#eab308;background:rgba(234,179,8,.06)}
+  .tab-pane{flex:1;display:none;overflow:hidden}
+  .tab-pane.activo{display:flex}
 
   /* SIDEBAR */
   .sidebar{width:360px;background:rgba(15,23,42,0.98);border-right:1px solid rgba(255,255,255,0.1);
@@ -26,6 +37,12 @@
   .updated{font-size:0.7rem;color:#94a3b8;margin-bottom:6px}
   #status{font-size:0.7rem;color:#94a3b8;margin-top:4px}
   #status.error{color:#ef4444}
+
+  /* CUADROS RESUMEN (sidebar del mapa) */
+  .resumen-cards{display:flex;gap:8px;margin-bottom:10px}
+  .stat-box{flex:1;background:#1e293b;border-radius:8px;padding:8px 4px;text-align:center}
+  .stat-box .num{font-family:'Teko',sans-serif;font-size:1.5rem;color:#fde047;line-height:1}
+  .stat-box .lbl{font-size:0.55rem;color:#94a3b8;text-transform:uppercase;margin-top:2px;line-height:1.2}
 
   .btn-container{display:flex;gap:10px;margin:8px 0}
   .btn-reset,.btn-metodologia{width:100%;padding:8px;background:#334155;color:#fff;border:none;
@@ -91,9 +108,45 @@
   .loading-text{font-family:'Teko',sans-serif;font-size:1.4rem;color:#80A162;margin-top:14px}
   @keyframes spin{to{transform:rotate(360deg)}}
 
+  /* ---------- VISTA ESTADISTICAS ---------- */
+  #vista-estadisticas{flex-direction:column;overflow-y:auto;background:#0f172a;padding:16px;
+    max-width:720px;margin:0 auto;width:100%}
+  #vista-estadisticas h2{font-family:'Teko',sans-serif;font-size:1.8rem;color:#80A162;margin:0 0 4px}
+  .est-updated{font-size:0.7rem;color:#94a3b8;margin:4px 0 16px}
+
+  .est-controles{background:#1e293b;border-radius:10px;padding:14px;margin-bottom:16px;
+    display:flex;flex-direction:column;gap:10px}
+  .est-fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .est-fila label{font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;width:100%}
+  .est-chip-group{display:flex;gap:6px;flex-wrap:wrap}
+  .est-chip{padding:6px 12px;background:#334155;border:1px solid #475569;border-radius:20px;
+    color:#cbd5e1;font-size:0.75rem;cursor:pointer;transition:.15s;user-select:none}
+  .est-chip.activo{background:#eab308;color:#0f172a;border-color:#fde047;font-weight:600}
+  .est-rango-custom{display:none;gap:8px}
+  .est-rango-custom.show{display:flex}
+  .est-rango-custom input{background:#0f172a;border:1px solid #334155;color:#fff;border-radius:6px;
+    padding:6px 8px;font-size:0.75rem;flex:1}
+
+  .est-resumen-top{display:flex;gap:12px;margin-bottom:14px}
+
+  .est-puerto-row{background:#1e293b;border-radius:8px;padding:10px 12px;margin-bottom:6px;
+    display:flex;align-items:center;gap:10px}
+  .est-puerto-rank{font-family:'Teko',sans-serif;font-size:1.3rem;color:#64748b;width:28px;flex-shrink:0}
+  .est-puerto-rank.top3{color:#eab308}
+  .est-puerto-info{flex:1;min-width:0}
+  .est-puerto-nombre{font-size:0.82rem;color:#f8fafc;font-weight:600;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .est-barra-track{background:#0f172a;border-radius:4px;height:6px;margin-top:5px;overflow:hidden}
+  .est-barra-fill{background:linear-gradient(90deg,#80A162,#2fb6c9);height:100%;border-radius:4px}
+  .est-puerto-metrica{text-align:right;flex-shrink:0}
+  .est-puerto-metrica .valor{font-family:'Teko',sans-serif;font-size:1.3rem;color:#fff;line-height:1}
+  .est-puerto-metrica .sub{font-size:0.6rem;color:#94a3b8}
+
+  #est-status{font-size:0.8rem;color:#94a3b8;text-align:center;margin-top:20px}
+
   @media(max-width:768px){
-    body{flex-direction:column}
     .sidebar{width:100%;order:1;max-height:45vh}
+    #vista-mapa{flex-direction:column}
     #map{order:2;flex:1;min-height:55vh}
   }
 </style>
@@ -115,7 +168,8 @@
       para las 5 zonas del Paraná monitoreadas: San Lorenzo, Rosario, Del Guazú,
       Braga y Bella Vista. Los datos vienen en formato AIS crudo (protocolo
       ITU-R M.1371); las coordenadas se decodifican dividiendo por 600.000
-      (estándar de 1/10000 de minuto).</p>
+      (estándar de 1/10000 de minuto). La fuente de verdad es el repositorio
+      histórico, que alimenta tanto el mapa en vivo como las estadísticas.</p>
       <p><b>Puertos:</b> catálogo af_ha010 "Puerto Fluvial Sudamérica",
       filtrado a instalaciones argentinas dentro del tramo cubierto por el mapa.
       El color indica el <b>uso</b> declarado (público / privado / mixto).</p>
@@ -123,6 +177,11 @@
       Instituto Geográfico Nacional (IGN) — ríos y arroyos del delta, límites
       interprovinciales e internacional Argentina-Uruguay — recortadas a la
       zona de interés y simplificadas para que el mapa cargue liviano.</p>
+      <p><b>Estadísticas de puertos:</b> un buque cuenta como "visita" cuando
+      se detecta fondeado (velocidad 0) a ≤500m de un puerto. Corridas
+      consecutivas del mismo buque en el mismo puerto se agrupan en una sola
+      visita (tolerando huecos cortos por antena); un hueco grande implica que
+      se fue y volvió, y cuenta como una visita nueva.</p>
       <p><b>Base cartográfica:</b> ArgenMap Oscuro del Instituto Geográfico
       Nacional (IGN), como fondo estándar del mapa.</p>
       <p style="color:#94a3b8;font-size:0.75rem;">Esta es una visualización
@@ -133,89 +192,146 @@
   </div>
 </div>
 
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <img src="logo_priha.jpg" alt="PRIHA" onerror="this.classList.add('hidden')">
-    <div>
-      <h1>TRÁNSITO AIS · PARANÁ</h1>
-      <p class="subtitulo">Observatorio Fluvial</p>
-    </div>
-  </div>
+<div class="tab-bar">
+  <button class="tab-btn activo" data-tab="mapa">🗺️ Mapa</button>
+  <button class="tab-btn" data-tab="estadisticas">📊 Estadísticas</button>
+</div>
 
-  <div class="content">
-    <div class="updated" id="updated">Cargando datos…</div>
-
-    <div class="btn-container">
-      <button id="btn-reset" class="btn-reset">Restablecer vista</button>
-      <button class="btn-metodologia" onclick="toggleModal()">Metodología</button>
-    </div>
-
-    <div class="layer-dropdown">
-      <button class="layer-dropdown-btn" id="layer-btn">
-        <span>Seleccionar capas</span>
-        <span id="layer-arrow" style="transition:.3s;">&#9660;</span>
-      </button>
-      <div class="layer-dropdown-content show" id="layer-content">
-
-        <div class="section-title">Tipo de objetivo</div>
-        <div class="subcapas">
-          <label><input type="checkbox" id="chk-buques" checked> Buques</label>
-          <label><input type="checkbox" id="chk-atones" checked> Balizas / AtoN</label>
-          <label><input type="checkbox" id="chk-bases" checked> Estaciones base</label>
-        </div>
-
-        <div class="section-title">Capas de referencia</div>
-        <div class="subcapas">
-          <label><input type="checkbox" id="chk-puertos" checked> Puertos</label>
-          <label><input type="checkbox" id="chk-rios" checked> Cursos de agua</label>
-          <label><input type="checkbox" id="chk-limprov" checked> Límites provinciales</label>
-          <label><input type="checkbox" id="chk-limintl" checked> Límites internacionales</label>
-        </div>
-
-        <div class="section-title">Contexto nacional (costa)</div>
-        <div class="subcapas">
-          <label><input type="checkbox" id="chk-marterr"> Mar territorial</label>
-          <label><input type="checkbox" id="chk-zee"> Zona económica exclusiva</label>
-        </div>
-        <div style="font-size:0.6rem;color:#94a3b8;margin-top:2px;">
-          Solo se ven alejando el zoom hacia la costa atlántica — no tocan
-          este tramo del río.
-        </div>
+<div id="vista-mapa" class="tab-pane activo">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="logo_priha.jpg" alt="PRIHA" onerror="this.classList.add('hidden')">
+      <div>
+        <h1>TRÁNSITO AIS · PARANÁ</h1>
+        <p class="subtitulo">Observatorio Fluvial</p>
       </div>
     </div>
 
-    <div class="legend-box">
-      <div class="legend-title">Puertos según uso</div>
-      <div class="legend-item"><div class="color-dot" style="background:#588157"></div> Público</div>
-      <div class="legend-item"><div class="color-dot" style="background:#ef4444"></div> Privado</div>
-      <div class="legend-item"><div class="color-dot" style="background:#eab308"></div> Mixto</div>
+    <div class="content">
+      <div class="updated" id="updated">Cargando datos…</div>
+
+      <div class="resumen-cards">
+        <div class="stat-box"><div class="num" id="card-pantalla">–</div><div class="lbl">En pantalla</div></div>
+        <div class="stat-box"><div class="num" id="card-rio-hoy">–</div><div class="lbl">Río hoy</div></div>
+        <div class="stat-box"><div class="num" id="card-top-puerto">–</div><div class="lbl">Top puerto hoy</div></div>
+      </div>
+
+      <div class="btn-container">
+        <button id="btn-reset" class="btn-reset">Restablecer vista</button>
+        <button class="btn-metodologia" onclick="toggleModal()">Metodología</button>
+      </div>
+
+      <div class="layer-dropdown">
+        <button class="layer-dropdown-btn" id="layer-btn">
+          <span>Seleccionar capas</span>
+          <span id="layer-arrow" style="transition:.3s;">&#9660;</span>
+        </button>
+        <div class="layer-dropdown-content show" id="layer-content">
+
+          <div class="section-title">Tipo de objetivo</div>
+          <div class="subcapas">
+            <label><input type="checkbox" id="chk-buques" checked> Buques</label>
+            <label><input type="checkbox" id="chk-atones" checked> Balizas / AtoN</label>
+            <label><input type="checkbox" id="chk-bases" checked> Estaciones base</label>
+          </div>
+
+          <div class="section-title">Capas de referencia</div>
+          <div class="subcapas">
+            <label><input type="checkbox" id="chk-puertos" checked> Puertos</label>
+            <label><input type="checkbox" id="chk-rios" checked> Cursos de agua</label>
+            <label><input type="checkbox" id="chk-limprov" checked> Límites provinciales</label>
+            <label><input type="checkbox" id="chk-limintl" checked> Límites internacionales</label>
+          </div>
+
+          <div class="section-title">Contexto nacional (costa)</div>
+          <div class="subcapas">
+            <label><input type="checkbox" id="chk-marterr"> Mar territorial</label>
+            <label><input type="checkbox" id="chk-zee"> Zona económica exclusiva</label>
+          </div>
+          <div style="font-size:0.6rem;color:#94a3b8;margin-top:2px;">
+            Solo se ven alejando el zoom hacia la costa atlántica — no tocan
+            este tramo del río.
+          </div>
+        </div>
+      </div>
+
+      <div class="legend-box">
+        <div class="legend-title">Puertos según uso</div>
+        <div class="legend-item"><div class="color-dot" style="background:#588157"></div> Público</div>
+        <div class="legend-item"><div class="color-dot" style="background:#ef4444"></div> Privado</div>
+        <div class="legend-item"><div class="color-dot" style="background:#eab308"></div> Mixto</div>
+      </div>
+
+      <div class="legend-box">
+        <div class="legend-title">Objetivos AIS</div>
+        <div class="legend-item"><div class="color-dot" style="background:#2fb6c9"></div> Buque</div>
+        <div class="legend-item"><div class="color-sq" style="background:#eab308;transform:rotate(45deg)"></div> Baliza / AtoN</div>
+        <div class="legend-item"><div class="color-sq" style="background:#8f2fc9"></div> Estación base</div>
+        <div style="font-size:0.62rem;color:#94a3b8;margin-top:4px;">El radar que recibió cada
+        señal figura en su popup (un buque visto por varios radares muestra solo el reporte más reciente).</div>
+      </div>
+
+      <div class="legend-box">
+        <div class="legend-title">Referencia geográfica</div>
+        <div class="legend-item"><div class="color-sq" style="background:#7f1d1d"></div> Cursos de agua</div>
+        <div class="legend-item"><div class="line-sample" style="border-color:#f8fafc"></div> Límite provincial</div>
+        <div class="legend-item"><div class="line-sample" style="border-color:#eab308"></div> Límite internacional</div>
+        <div class="legend-item"><div class="line-sample" style="border-color:#38bdf8"></div> Mar territorial</div>
+        <div class="legend-item"><div class="line-sample" style="border-color:#a855f7"></div> ZEE</div>
+      </div>
+
+      <div id="status"></div>
+
+      <a href="https://hidrografia.agpse.gob.ar/" target="_blank" class="btn-fuente">Ver fuente AGPSE</a>
+    </div>
+  </aside>
+
+  <div id="map"></div>
+</div>
+
+<div id="vista-estadisticas" class="tab-pane">
+  <h2>Ranking de puertos</h2>
+  <div class="est-updated" id="est-updated">Cargando...</div>
+
+  <div class="est-controles">
+    <div class="est-fila">
+      <label>Período</label>
+      <div class="est-chip-group" id="chipsPeriodo">
+        <div class="est-chip" data-periodo="hoy">Hoy</div>
+        <div class="est-chip" data-periodo="semana">Última semana</div>
+        <div class="est-chip" data-periodo="mes">Último mes</div>
+        <div class="est-chip activo" data-periodo="todo">Todo</div>
+        <div class="est-chip" data-periodo="custom">Rango personalizado</div>
+      </div>
+      <div class="est-rango-custom" id="rangoCustom">
+        <input type="date" id="fechaDesde">
+        <input type="date" id="fechaHasta">
+      </div>
     </div>
 
-    <div class="legend-box">
-      <div class="legend-title">Objetivos AIS</div>
-      <div class="legend-item"><div class="color-dot" style="background:#2fb6c9"></div> Buque</div>
-      <div class="legend-item"><div class="color-sq" style="background:#eab308;transform:rotate(45deg)"></div> Baliza / AtoN</div>
-      <div class="legend-item"><div class="color-sq" style="background:#8f2fc9"></div> Estación base</div>
-      <div style="font-size:0.62rem;color:#94a3b8;margin-top:4px;">El radar que recibió cada
-      señal figura en su popup (un buque visto por varios radares muestra solo el reporte más reciente).</div>
+    <div class="est-fila">
+      <label>Métrica</label>
+      <div class="est-chip-group" id="chipsMetrica">
+        <div class="est-chip activo" data-metrica="buques">Buques únicos</div>
+        <div class="est-chip" data-metrica="horas">Horas totales</div>
+        <div class="est-chip" data-metrica="visitas">Cantidad de visitas</div>
+      </div>
     </div>
 
-    <div class="legend-box">
-      <div class="legend-title">Referencia geográfica</div>
-      <div class="legend-item"><div class="color-sq" style="background:#7f1d1d"></div> Cursos de agua</div>
-      <div class="legend-item"><div class="line-sample" style="border-color:#f8fafc"></div> Límite provincial</div>
-      <div class="legend-item"><div class="line-sample" style="border-color:#eab308"></div> Límite internacional</div>
-      <div class="legend-item"><div class="line-sample" style="border-color:#38bdf8"></div> Mar territorial</div>
-      <div class="legend-item"><div class="line-sample" style="border-color:#a855f7"></div> ZEE</div>
+    <div class="est-fila">
+      <label>Mostrar</label>
+      <div class="est-chip-group" id="chipsTopN">
+        <div class="est-chip" data-top="5">Top 5</div>
+        <div class="est-chip activo" data-top="10">Top 10</div>
+        <div class="est-chip" data-top="20">Top 20</div>
+      </div>
     </div>
-
-    <div id="status"></div>
-
-    <a href="https://hidrografia.agpse.gob.ar/" target="_blank" class="btn-fuente">Ver fuente AGPSE</a>
   </div>
-</aside>
 
-<div id="map"></div>
+  <div class="est-resumen-top" id="estResumenTop"></div>
+  <div id="estRanking"></div>
+  <div id="est-status"></div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -235,20 +351,33 @@
     arrow.style.transform = content.classList.contains("show") ? "rotate(180deg)" : "rotate(0deg)";
   };
 
+  // ---------- Tabs ----------
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("activo"));
+      document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("activo"));
+      btn.classList.add("activo");
+      const pane = document.getElementById("vista-" + btn.dataset.tab);
+      pane.classList.add("activo");
+      if (btn.dataset.tab === "mapa") {
+        setTimeout(() => map.invalidateSize(), 50);
+      } else if (btn.dataset.tab === "estadisticas") {
+        statsCargar();
+      }
+    });
+  });
+
   // ---------- Config ----------
-  const DATA_URL = "data/latest.json";
+  const HIST_BASE = "https://raw.githubusercontent.com/thomasartopoulos/historico-ais/main/data";
+  const DATA_URL = `${HIST_BASE}/latest.json`;
   const ESCALA = 600000; // AIS: 1/10000 de minuto => grados = valor / 600000
 
   const TYPE_LABEL = { 0: "Buque", 1: "Buque", 3: "Estación base", 4: "Baliza / AtoN" };
 
-  // Colores por TIPO de objetivo (ya no por zona: un mismo buque puede
-  // aparecer en varios radares, y no tiene sentido mostrarlo varias veces
-  // ni pintarlo distinto según cuál lo vio)
   const COLOR_BUQUE = "#2fb6c9";
   const COLOR_ATON = "#eab308";
   const COLOR_BASE = "#8f2fc9";
 
-  // Colores de puertos por USO (antes era por tipo)
   const USO_COLOR = { "Público": "#588157", "Privado": "#ef4444", "Mixto": "#eab308" };
   const USO_COLOR_DEFAULT = "#94a3b8";
 
@@ -256,8 +385,6 @@
   const DEFAULT_ZOOM = 10;
   const map = L.map("map", { zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
-  // ArgenMap Oscuro (IGN) es el fondo estándar del mapa (no una capa togglable).
-  // TMS, por eso {-y} y NO tms:true (evita doble flip).
   L.tileLayer(
     "https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/argenmap_oscuro@EPSG%3A3857@png/{z}/{x}/{-y}.png",
     { attribution: "&copy; IGN Argentina", minZoom: 1, maxZoom: 18 }
@@ -359,7 +486,6 @@
 
     try {
       const rios = await cargarCapaGeoJSON("data/rios.geojson");
-      // Cursos de agua en tono rojizo (a pedido, en vez del celeste convencional)
       L.geoJSON(rios, {
         style: { color: "#ef4444", weight: 0.6, opacity: 0.4, fillColor: "#7f1d1d", fillOpacity: 0.4 },
         onEachFeature: (feature, layer) => {
@@ -390,8 +516,6 @@
       }).addTo(capaLimitesIntl);
     } catch (e) { console.error("Error cargando límites internacionales:", e); }
 
-    // Contexto nacional: mar territorial y ZEE. No tocan el tramo del río,
-    // solo se ven alejando el zoom hacia la costa. Apagadas por default.
     try {
       const marTerr = await cargarCapaGeoJSON("data/mar_territorial.geojson");
       L.geoJSON(marTerr, {
@@ -409,7 +533,6 @@
     } catch (e) { console.error("Error cargando ZEE:", e); }
 
     [capaRios, capaLimitesProv, capaLimitesIntl, capaPuertos].forEach(c => c.addTo(map));
-    // Mar territorial y ZEE quedan cargadas pero OFF por default (no se agregan al mapa).
 
     document.getElementById("chk-puertos").addEventListener("change", e =>
       e.target.checked ? capaPuertos.addTo(map) : map.removeLayer(capaPuertos));
@@ -429,9 +552,6 @@
 
   const capaObjetivos = L.layerGroup().addTo(map);
 
-  // Combina los tgts de las 5 zonas en un solo diccionario por MMSI, quedándose
-  // con el reporte más FRESCO (menor "a" = menos segundos desde la última señal)
-  // cuando el mismo buque es visto por más de un radar/zona.
   function combinarPorMMSI(zonas) {
     const combinados = {};
     Object.entries(zonas || {}).forEach(([nombreZona, dataZona]) => {
@@ -500,6 +620,43 @@
     map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
   };
 
+  // ---------- Cuadros resumen (sidebar del mapa) ----------
+  async function cargarCuadrosResumen() {
+    try {
+      const [resumenResp, visitasResp] = await Promise.all([
+        fetch(`${HIST_BASE}/resumen_diario.json`, { cache: "no-store" }),
+        fetch(`${HIST_BASE}/visitas.json`, { cache: "no-store" }),
+      ]);
+      const hoy = new Date().toISOString().slice(0, 10);
+
+      if (resumenResp.ok) {
+        const resumen = await resumenResp.json();
+        const dia = (resumen.por_dia || {})[hoy];
+        document.getElementById("card-rio-hoy").textContent =
+          dia && dia.rio_buques_unicos != null ? dia.rio_buques_unicos : "0";
+      }
+
+      if (visitasResp.ok) {
+        const data = await visitasResp.json();
+        const visitasHoy = (data.visitas || []).filter(v => v.inicio.slice(0, 10) === hoy);
+        const porPuerto = {};
+        visitasHoy.forEach(v => {
+          porPuerto[v.puerto] = (porPuerto[v.puerto] || new Set());
+          porPuerto[v.puerto].add(v.mmsi);
+        });
+        let top = "–";
+        let max = 0;
+        Object.entries(porPuerto).forEach(([puerto, set]) => {
+          if (set.size > max) { max = set.size; top = puerto; }
+        });
+        document.getElementById("card-top-puerto").textContent = max > 0 ? top : "–";
+        document.getElementById("card-top-puerto").style.fontSize = max > 0 ? "0.85rem" : "1.5rem";
+      }
+    } catch (e) {
+      console.error("Error cargando cuadros resumen:", e);
+    }
+  }
+
   async function cargarDatos() {
     const statusEl = document.getElementById("status");
     const updatedEl = document.getElementById("updated");
@@ -514,6 +671,7 @@
 
       const combinados = combinarPorMMSI(data.zonas || {});
       const total = renderObjetivos(combinados);
+      document.getElementById("card-pantalla").textContent = total;
 
       let primerCentro = null;
       Object.values(data.zonas || {}).forEach(dataZona => {
@@ -543,7 +701,128 @@
   }
 
   cargarDatos();
-  setInterval(cargarDatos, 60_000);
+  cargarCuadrosResumen();
+  setInterval(() => { cargarDatos(); cargarCuadrosResumen(); }, 60_000);
+
+  // ---------- VISTA ESTADISTICAS ----------
+  let statsVisitas = [];
+  let statsCargado = false;
+  let statsEstado = { periodo: "todo", metrica: "buques", topN: 10 };
+
+  function statsRangoDeFechas(periodo) {
+    const ahora = new Date();
+    const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    if (periodo === "hoy") return [inicioHoy, ahora];
+    if (periodo === "semana") return [new Date(inicioHoy.getTime() - 7*86400000), ahora];
+    if (periodo === "mes") return [new Date(inicioHoy.getTime() - 30*86400000), ahora];
+    if (periodo === "custom") {
+      const desde = document.getElementById("fechaDesde").value;
+      const hasta = document.getElementById("fechaHasta").value;
+      return [desde ? new Date(desde) : new Date(0), hasta ? new Date(hasta + "T23:59:59") : ahora];
+    }
+    return [new Date(0), ahora];
+  }
+
+  function statsCalcularRanking() {
+    const [desde, hasta] = statsRangoDeFechas(statsEstado.periodo);
+    const enRango = statsVisitas.filter(v => {
+      const t = new Date(v.inicio);
+      return t >= desde && t <= hasta;
+    });
+
+    const porPuerto = {};
+    enRango.forEach(v => {
+      const p = porPuerto[v.puerto] || (porPuerto[v.puerto] = { buques: new Set(), horas: 0, visitas: 0 });
+      p.buques.add(v.mmsi);
+      p.horas += v.duracion_horas;
+      p.visitas += 1;
+    });
+
+    const campo = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "horas" : "visitas";
+    let filas = Object.entries(porPuerto).map(([puerto, d]) => ({
+      puerto, buques: d.buques.size, horas: Math.round(d.horas * 10) / 10, visitas: d.visitas,
+    }));
+    filas.sort((a, b) => b[campo] - a[campo]);
+
+    return { filas, totalBuques: new Set(enRango.map(v => v.mmsi)).size, totalVisitas: enRango.length };
+  }
+
+  function statsRender() {
+    const { filas, totalBuques, totalVisitas } = statsCalcularRanking();
+    const campo = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "horas" : "visitas";
+    const top = filas.slice(0, statsEstado.topN);
+    const max = top.length ? Math.max(...top.map(f => f[campo])) : 1;
+
+    document.getElementById("estResumenTop").innerHTML = `
+      <div class="stat-box"><div class="num">${filas.length}</div><div class="lbl">Puertos con actividad</div></div>
+      <div class="stat-box"><div class="num">${totalBuques}</div><div class="lbl">Buques únicos totales</div></div>
+      <div class="stat-box"><div class="num">${totalVisitas}</div><div class="lbl">Visitas totales</div></div>
+    `;
+
+    const cont = document.getElementById("estRanking");
+    if (top.length === 0) {
+      cont.innerHTML = "<p style='color:#94a3b8;text-align:center;'>Sin actividad en el período elegido.</p>";
+      return;
+    }
+    cont.innerHTML = top.map((f, i) => {
+      const valor = f[campo];
+      const sub = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "hs" : "visitas";
+      const pct = Math.round((valor / max) * 100);
+      return `
+        <div class="est-puerto-row">
+          <div class="est-puerto-rank ${i < 3 ? 'top3' : ''}">${i + 1}</div>
+          <div class="est-puerto-info">
+            <div class="est-puerto-nombre">${escapeHtml(f.puerto)}</div>
+            <div class="est-barra-track"><div class="est-barra-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div class="est-puerto-metrica"><div class="valor">${valor}</div><div class="sub">${sub}</div></div>
+        </div>`;
+    }).join("");
+  }
+
+  function statsSetupChips(groupId, dataAttr, onSelect) {
+    const group = document.getElementById(groupId);
+    group.querySelectorAll(".est-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        group.querySelectorAll(".est-chip").forEach(c => c.classList.remove("activo"));
+        chip.classList.add("activo");
+        onSelect(chip.dataset[dataAttr]);
+        statsRender();
+      });
+    });
+  }
+
+  statsSetupChips("chipsPeriodo", "periodo", v => {
+    statsEstado.periodo = v;
+    document.getElementById("rangoCustom").classList.toggle("show", v === "custom");
+  });
+  statsSetupChips("chipsMetrica", "metrica", v => statsEstado.metrica = v);
+  statsSetupChips("chipsTopN", "top", v => statsEstado.topN = parseInt(v, 10));
+  document.getElementById("fechaDesde").addEventListener("change", statsRender);
+  document.getElementById("fechaHasta").addEventListener("change", statsRender);
+
+  async function statsCargar() {
+    if (statsCargado) { statsRender(); return; }
+    const statusEl = document.getElementById("est-status");
+    try {
+      const resp = await fetch(`${HIST_BASE}/visitas.json`, { cache: "no-store" });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const data = await resp.json();
+      statsVisitas = data.visitas || [];
+      document.getElementById("est-updated").textContent =
+        "Última actualización: " + new Date(data.actualizado).toLocaleString("es-AR") +
+        ` · ${statsVisitas.length} visitas registradas en total`;
+      if (statsVisitas.length === 0) {
+        statusEl.textContent = "Todavía no hay visitas registradas (el pipeline recién arrancó).";
+        return;
+      }
+      statsCargado = true;
+      statsRender();
+    } catch (err) {
+      statusEl.textContent = "Error cargando estadísticas: " + err.message;
+      console.error(err);
+    }
+  }
 </script>
 
 </body>
