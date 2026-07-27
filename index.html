@@ -152,6 +152,13 @@
   .mp-buque-nombre{font-size:0.78rem;color:#f8fafc;font-weight:600}
   .mp-buque-sub{font-size:0.62rem;color:#94a3b8}
   .mp-buque-dur{font-family:'Teko',sans-serif;font-size:1.1rem;color:#fde047}
+  .mp-badge-paradas{display:inline-block;background:#334155;color:#94a3b8;font-size:0.6rem;
+    padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
+  .mp-paradas-detalle{margin-top:4px;padding-left:8px;border-left:2px solid rgba(255,255,255,.08)}
+  .mp-parada-item{font-size:0.62rem;color:#64748b;padding:1px 0}
+  .badge-estadia-larga{display:inline-block;background:#7c2d12;color:#fdba74;font-size:0.6rem;
+    padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
+  .est-puerto-row.estadia-larga,.mp-buque-row.estadia-larga{border-left:3px solid #f97316}
 
   @media(max-width:768px){
     .sidebar{width:100%;order:1;max-height:45vh}
@@ -434,6 +441,7 @@
 
   // ---------- Config ----------
   const HIST_BASE = "https://raw.githubusercontent.com/thomasartopoulos/historico-ais/main/data";
+  const UMBRAL_ESTADIA_LARGA_HORAS = 48; // a partir de acá se marca como "estadía prolongada"
   const DATA_URL = `${HIST_BASE}/latest.json`;
   const ESCALA = 600000; // AIS: 1/10000 de minuto => grados = valor / 600000
 
@@ -807,15 +815,16 @@
 
     const porPuerto = {};
     enRango.forEach(v => {
-      const p = porPuerto[v.puerto] || (porPuerto[v.puerto] = { buques: new Set(), horas: 0, visitas: 0 });
+      const p = porPuerto[v.puerto] || (porPuerto[v.puerto] = { buques: new Set(), horas: 0, visitas: 0, estadiaLarga: false });
       p.buques.add(v.mmsi);
       p.horas += v.duracion_horas;
       p.visitas += 1;
+      if (v.duracion_horas >= UMBRAL_ESTADIA_LARGA_HORAS) p.estadiaLarga = true;
     });
 
     const campo = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "horas" : "visitas";
     let filas = Object.entries(porPuerto).map(([puerto, d]) => ({
-      puerto, buques: d.buques.size, horas: Math.round(d.horas * 10) / 10, visitas: d.visitas,
+      puerto, buques: d.buques.size, horas: Math.round(d.horas * 10) / 10, visitas: d.visitas, estadiaLarga: d.estadiaLarga,
     }));
     filas.sort((a, b) => b[campo] - a[campo]);
 
@@ -844,11 +853,12 @@
       const valor = f[campo];
       const sub = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "hs" : "visitas";
       const pct = Math.round((valor / max) * 100);
+      const badge = f.estadiaLarga ? `<span class="badge-estadia-larga">⏳ estadía prolongada</span>` : "";
       return `
-        <div class="est-puerto-row" data-puerto="${escapeHtml(f.puerto)}" style="cursor:pointer;">
+        <div class="est-puerto-row ${f.estadiaLarga ? 'estadia-larga' : ''}" data-puerto="${escapeHtml(f.puerto)}" style="cursor:pointer;">
           <div class="est-puerto-rank ${i < 3 ? 'top3' : ''}">${i + 1}</div>
           <div class="est-puerto-info">
-            <div class="est-puerto-nombre">${escapeHtml(f.puerto)}</div>
+            <div class="est-puerto-nombre">${escapeHtml(f.puerto)}${badge}</div>
             <div class="est-barra-track"><div class="est-barra-fill" style="width:${pct}%"></div></div>
           </div>
           <div class="est-puerto-metrica"><div class="valor">${valor}</div><div class="sub">${sub}</div></div>
@@ -1024,6 +1034,31 @@
     }
   }
 
+  // Agrupa visitas por dia + una clave extra (mmsi o puerto segun el caso).
+  // Si el mismo buque paro varias veces en el mismo puerto el mismo dia
+  // (con huecos reales > tolerancia de sesion), esto las junta en una sola
+  // fila con el total de horas sumado y el rango completo del dia.
+  function agruparVisitasPorDia(visitas, claveExtraFn) {
+    const grupos = {};
+    visitas.forEach(v => {
+      const dia = v.inicio.slice(0, 10);
+      const extra = claveExtraFn(v);
+      const clave = `${extra}|${dia}`;
+      if (!grupos[clave]) {
+        grupos[clave] = { extra, fecha: dia, horas: 0, paradas: [], inicio: v.inicio, fin: v.fin, nombre: v.nombre, mmsi: v.mmsi, puerto: v.puerto };
+      }
+      const g = grupos[clave];
+      g.paradas.push(v);
+      g.horas += v.duracion_horas;
+      if (new Date(v.inicio) < new Date(g.inicio)) g.inicio = v.inicio;
+      if (new Date(v.fin) > new Date(g.fin)) g.fin = v.fin;
+      if (v.nombre && !g.nombre) g.nombre = v.nombre;
+    });
+    return Object.values(grupos)
+      .map(g => ({ ...g, horas: Math.round(g.horas * 100) / 100 }))
+      .sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+  }
+
   async function abrirModalPuerto(puerto) {
     const coords = await mpCargarCoordsPuertos();
     const centro = coords[puerto] || [-32.75, -60.7];
@@ -1040,31 +1075,39 @@
     const [desde, hasta] = statsRangoDeFechas(statsEstado.periodo);
     const visitasPuerto = statsVisitas
       .filter(v => v.puerto === puerto)
-      .filter(v => { const t = new Date(v.inicio); return t >= desde && t <= hasta; })
-      .sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+      .filter(v => { const t = new Date(v.inicio); return t >= desde && t <= hasta; });
+
+    const grupos = agruparVisitasPorDia(visitasPuerto, v => v.mmsi);
 
     const lista = document.getElementById("mp-lista");
-    if (visitasPuerto.length === 0) {
+    if (grupos.length === 0) {
       lista.innerHTML = "<p style='color:#94a3b8;font-size:0.75rem;'>Sin buques en este período.</p>";
       return;
     }
-    lista.innerHTML = visitasPuerto.map((v, i) => `
-      <div class="mp-buque-row" data-idx="${i}">
+    lista.innerHTML = grupos.map((g, i) => {
+      const badgeParadas = g.paradas.length > 1 ? `<span class="mp-badge-paradas">${g.paradas.length} paradas ese día</span>` : "";
+      const badgeLarga = g.horas >= UMBRAL_ESTADIA_LARGA_HORAS ? `<span class="badge-estadia-larga">⏳ prolongada</span>` : "";
+      return `
+      <div class="mp-buque-row ${g.horas >= UMBRAL_ESTADIA_LARGA_HORAS ? 'estadia-larga' : ''}" data-idx="${i}">
         <div>
-          <div class="mp-buque-nombre">${escapeHtml(v.nombre || ("MMSI " + v.mmsi))}</div>
-          <div class="mp-buque-sub">${new Date(v.inicio).toLocaleString("es-AR")} → ${new Date(v.fin).toLocaleString("es-AR")}</div>
+          <div class="mp-buque-nombre">${escapeHtml(g.nombre || ("MMSI " + g.mmsi))}${badgeParadas}${badgeLarga}</div>
+          <div class="mp-buque-sub">${new Date(g.inicio).toLocaleString("es-AR")} → ${new Date(g.fin).toLocaleString("es-AR")}</div>
         </div>
-        <div class="mp-buque-dur">${v.duracion_horas}h</div>
-      </div>
-    `).join("");
+        <div class="mp-buque-dur">${g.horas}h</div>
+      </div>`;
+    }).join("");
 
     lista.querySelectorAll(".mp-buque-row").forEach(row => {
-      row.addEventListener("click", () => mpMostrarTrack(visitasPuerto[+row.dataset.idx], row,
+      const g = grupos[+row.dataset.idx];
+      // track combinado: desde el inicio de la primera parada hasta el fin de la ultima ese dia
+      row.addEventListener("click", () => mpMostrarTrack(
+        { mmsi: g.mmsi, inicio: g.inicio, fin: g.fin }, row,
         { filaSelector: "#mp-lista .mp-buque-row", statusId: "mp-track-status" }));
     });
 
-    // Mostrar automaticamente el track del primero (mas reciente)
-    mpMostrarTrack(visitasPuerto[0], lista.querySelector(".mp-buque-row"),
+    // Mostrar automaticamente el track del mas reciente
+    const g0 = grupos[0];
+    mpMostrarTrack({ mmsi: g0.mmsi, inicio: g0.inicio, fin: g0.fin }, lista.querySelector(".mp-buque-row"),
       { filaSelector: "#mp-lista .mp-buque-row", statusId: "mp-track-status" });
   }
 
@@ -1121,6 +1164,7 @@
       mmsi: b.mmsi, nombre: b.nombre, puertosDistintos: b.puertos.size,
       visitasCount: b.visitas.length, horas: Math.round(b.horas * 10) / 10,
       visitas: b.visitas.sort((a, c) => new Date(a.inicio) - new Date(c.inicio)),
+      estadiaLarga: b.visitas.some(v => v.duracion_horas >= UMBRAL_ESTADIA_LARGA_HORAS),
     }));
     filas.sort((a, b) => b.puertosDistintos - a.puertosDistintos || b.visitasCount - a.visitasCount);
 
@@ -1145,11 +1189,12 @@
     }
     cont.innerHTML = top.map((f, i) => {
       const pct = Math.round((f.puertosDistintos / max) * 100);
+      const badge = f.estadiaLarga ? `<span class="badge-estadia-larga">⏳ estadía prolongada</span>` : "";
       return `
-        <div class="est-puerto-row" data-mmsi="${escapeHtml(f.mmsi)}" style="cursor:pointer;">
+        <div class="est-puerto-row ${f.estadiaLarga ? 'estadia-larga' : ''}" data-mmsi="${escapeHtml(f.mmsi)}" style="cursor:pointer;">
           <div class="est-puerto-rank ${i < 3 && f.puertosDistintos > 1 ? 'top3' : ''}">${i + 1}</div>
           <div class="est-puerto-info">
-            <div class="est-puerto-nombre">${escapeHtml(f.nombre || ("MMSI " + f.mmsi))}</div>
+            <div class="est-puerto-nombre">${escapeHtml(f.nombre || ("MMSI " + f.mmsi))}${badge}</div>
             <div class="est-barra-track"><div class="est-barra-fill" style="width:${pct}%"></div></div>
           </div>
           <div class="est-puerto-metrica"><div class="valor">${f.puertosDistintos}</div><div class="sub">puertos</div></div>
@@ -1171,13 +1216,14 @@
     document.getElementById("mb-track-status").textContent = "";
 
     const visitas = datosBuque.visitas; // ya ordenadas cronologicamente
-    const centro = coords[visitas[0].puerto] || [-32.75, -60.7];
+    const gruposAsc = agruparVisitasPorDia(visitas, v => v.puerto).slice().reverse(); // cronologico ascendente
+    const centro = coords[gruposAsc[0].puerto] || [-32.75, -60.7];
 
     setTimeout(() => {
       mpInicializarMapa(centro, "mb-minimapa", false);
       mpMapa.invalidateSize();
-      // marcar cada puerto de la ruta, numerado en orden cronologico
-      const puertosUnicos = [...new Set(visitas.map(v => v.puerto))];
+      // marcar cada puerto de la ruta, numerado en orden cronologico (ya agrupado)
+      const puertosUnicos = [...new Set(gruposAsc.map(g => g.puerto))];
       const marcadores = [];
       puertosUnicos.forEach((p, idx) => {
         const c = coords[p];
@@ -1199,18 +1245,23 @@
     }, 50);
 
     const lista = document.getElementById("mb-lista");
-    lista.innerHTML = visitas.map((v, i) => `
-      <div class="mp-buque-row" data-idx="${i}">
+    lista.innerHTML = gruposAsc.map((g, i) => {
+      const badgeParadas = g.paradas.length > 1 ? `<span class="mp-badge-paradas">${g.paradas.length} paradas ese día</span>` : "";
+      const badgeLarga = g.horas >= UMBRAL_ESTADIA_LARGA_HORAS ? `<span class="badge-estadia-larga">⏳ prolongada</span>` : "";
+      return `
+      <div class="mp-buque-row ${g.horas >= UMBRAL_ESTADIA_LARGA_HORAS ? 'estadia-larga' : ''}" data-idx="${i}">
         <div>
-          <div class="mp-buque-nombre">${i + 1}. ${escapeHtml(v.puerto)}</div>
-          <div class="mp-buque-sub">${new Date(v.inicio).toLocaleString("es-AR")} → ${new Date(v.fin).toLocaleString("es-AR")}</div>
+          <div class="mp-buque-nombre">${i + 1}. ${escapeHtml(g.puerto)}${badgeParadas}${badgeLarga}</div>
+          <div class="mp-buque-sub">${new Date(g.inicio).toLocaleString("es-AR")} → ${new Date(g.fin).toLocaleString("es-AR")}</div>
         </div>
-        <div class="mp-buque-dur">${v.duracion_horas}h</div>
-      </div>
-    `).join("");
+        <div class="mp-buque-dur">${g.horas}h</div>
+      </div>`;
+    }).join("");
 
     lista.querySelectorAll(".mp-buque-row").forEach(row => {
-      row.addEventListener("click", () => mpMostrarTrack(visitas[+row.dataset.idx], row,
+      const g = gruposAsc[+row.dataset.idx];
+      row.addEventListener("click", () => mpMostrarTrack(
+        { mmsi: g.mmsi, inicio: g.inicio, fin: g.fin }, row,
         { filaSelector: "#mb-lista .mp-buque-row", statusId: "mb-track-status" }));
     });
   }
