@@ -385,6 +385,15 @@
   const DEFAULT_ZOOM = 10;
   const map = L.map("map", { zoomControl: true }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
+  // Panes con z-index explícito, para que el orden de apilado sea determinístico
+  // sin depender de en qué orden terminan de cargar las capas (fetch async) ni
+  // de bringToBack/bringToFront, que se rompen fácil con re-renders.
+  // overlayPane por defecto de Leaflet = 400, markerPane = 600.
+  map.createPane("paneRios");
+  map.getPane("paneRios").style.zIndex = 350;   // por debajo del resto de las capas vectoriales
+  map.createPane("paneObjetivos");
+  map.getPane("paneObjetivos").style.zIndex = 450; // por ENCIMA del río, por debajo de puertos/markerPane
+
   L.tileLayer(
     "https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/argenmap_oscuro@EPSG%3A3857@png/{z}/{x}/{-y}.png",
     { attribution: "&copy; IGN Argentina", minZoom: 1, maxZoom: 18 }
@@ -487,13 +496,13 @@
     try {
       const rios = await cargarCapaGeoJSON("data/rios.geojson");
       L.geoJSON(rios, {
+        pane: "paneRios",
         style: { color: "#ef4444", weight: 0.6, opacity: 0.4, fillColor: "#7f1d1d", fillOpacity: 0.4 },
         onEachFeature: (feature, layer) => {
           const nombre = feature.properties.fna || feature.properties.objeto || "Curso de agua";
           layer.bindPopup(`<div class="popup-title">${escapeHtml(nombre)}</div>`);
         },
       }).addTo(capaRios);
-      capaRios.eachLayer(l => l.bringToBack && l.bringToBack());
     } catch (e) { console.error("Error cargando ríos:", e); }
 
     try {
@@ -583,6 +592,7 @@
         marker = L.marker([lat, lon], { icon: iconoPara(tgt.t) });
       } else {
         marker = L.circleMarker([lat, lon], {
+          pane: "paneObjetivos",
           radius: 6, color: "#06222b", weight: 2, fillColor: COLOR_BUQUE, fillOpacity: 0.9,
         });
       }
