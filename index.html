@@ -159,6 +159,12 @@
   .badge-estadia-larga{display:inline-block;background:#7c2d12;color:#fdba74;font-size:0.6rem;
     padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
   .est-puerto-row.estadia-larga,.mp-buque-row.estadia-larga{border-left:3px solid #f97316}
+  .parado-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;
+    border-top:1px solid rgba(255,255,255,.06);font-size:0.7rem}
+  .parado-row:first-child{border-top:none}
+  .parado-nombre{color:#f8fafc;font-weight:600}
+  .parado-sub{color:#94a3b8;font-size:0.62rem}
+  .parado-dist{font-family:'Teko',sans-serif;font-size:1.1rem;color:#fde047;text-align:right;flex-shrink:0;margin-left:8px}
 
   @media(max-width:768px){
     .sidebar{width:100%;order:1;max-height:45vh}
@@ -227,9 +233,13 @@
       <div class="updated" id="updated">Cargando datos…</div>
 
       <div class="resumen-cards">
-        <div class="stat-box"><div class="num" id="card-pantalla">–</div><div class="lbl">En pantalla</div></div>
         <div class="stat-box"><div class="num" id="card-rio-hoy">–</div><div class="lbl">Río hoy</div></div>
         <div class="stat-box"><div class="num" id="card-top-puerto">–</div><div class="lbl">Top puerto hoy</div></div>
+      </div>
+
+      <div class="legend-box" id="box-parados">
+        <div class="legend-title">Buques parados ahora (0 nudos)</div>
+        <div id="lista-parados" style="max-height:220px;overflow-y:auto;"></div>
       </div>
 
       <div class="btn-container">
@@ -493,6 +503,15 @@
 
   function decodeCoord(v) { return v / ESCALA; }
 
+  // Haversine: distancia real en metros, misma formula que usa el backend
+  const RADIO_TIERRA_M = 6371000;
+  function haversineM(lat1, lon1, lat2, lon2) {
+    const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+    const dphi = (lat2 - lat1) * Math.PI / 180, dlmb = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dlmb / 2) ** 2;
+    return 2 * RADIO_TIERRA_M * Math.asin(Math.sqrt(a));
+  }
+
   function edadTexto(segundos) {
     if (segundos == null) return "";
     if (segundos < 60) return `hace ${segundos}s`;
@@ -751,6 +770,51 @@
     }
   }
 
+  async function renderBuquesParados(combinados) {
+    const cont = document.getElementById("lista-parados");
+    try {
+      const coordsPuertos = await mpCargarCoordsPuertos(); // {nombre: [lat, lon]}
+      const entradasPuertos = Object.entries(coordsPuertos);
+
+      const parados = [];
+      Object.entries(combinados).forEach(([mmsi, tgt]) => {
+        if (tgt.t !== 0 && tgt.t !== 1) return;   // solo buques
+        if (tgt.s !== 0) return;                   // solo velocidad 0 (parados)
+        const lat = decodeCoord(tgt.y), lon = decodeCoord(tgt.x);
+
+        let mejorPuerto = null, mejorDist = Infinity;
+        entradasPuertos.forEach(([nombre, [plat, plon]]) => {
+          const d = haversineM(lat, lon, plat, plon);
+          if (d < mejorDist) { mejorDist = d; mejorPuerto = nombre; }
+        });
+
+        parados.push({
+          mmsi, nombre: tgt.n && tgt.n.trim() ? tgt.n.trim() : `MMSI ${mmsi}`,
+          puerto: mejorPuerto, distancia_m: Math.round(mejorDist),
+        });
+      });
+
+      parados.sort((a, b) => a.distancia_m - b.distancia_m);
+
+      if (parados.length === 0) {
+        cont.innerHTML = "<p style='color:#94a3b8;font-size:0.7rem;'>Ningún buque con 0 nudos en esta corrida.</p>";
+        return;
+      }
+      cont.innerHTML = parados.map(p => `
+        <div class="parado-row">
+          <div>
+            <div class="parado-nombre">${escapeHtml(p.nombre)}</div>
+            <div class="parado-sub">${escapeHtml(p.puerto)}</div>
+          </div>
+          <div class="parado-dist">${p.distancia_m} m</div>
+        </div>
+      `).join("");
+    } catch (e) {
+      cont.innerHTML = "<p style='color:#ef4444;font-size:0.7rem;'>Error calculando distancias a puerto.</p>";
+      console.error("Error en renderBuquesParados:", e);
+    }
+  }
+
   async function cargarDatos() {
     const statusEl = document.getElementById("status");
     const updatedEl = document.getElementById("updated");
@@ -765,7 +829,7 @@
 
       const combinados = combinarPorMMSI(data.zonas || {});
       const total = renderObjetivos(combinados);
-      document.getElementById("card-pantalla").textContent = total;
+      renderBuquesParados(combinados);
 
       let primerCentro = null;
       Object.values(data.zonas || {}).forEach(dataZona => {
