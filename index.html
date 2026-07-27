@@ -166,10 +166,46 @@
   .parado-sub{color:#94a3b8;font-size:0.62rem}
   .parado-dist{font-family:'Teko',sans-serif;font-size:1.1rem;color:#fde047;text-align:right;flex-shrink:0;margin-left:8px}
 
+  /* PARADOS DROPDOWN */
+  .parados-dropdown{position:relative;margin-bottom:8px}
+  .parados-dropdown-btn{width:100%;padding:9px 12px;background:#1e293b;color:#f8fafc;border-radius:6px;
+    border:1px solid #334155;cursor:pointer;text-align:left;display:flex;justify-content:space-between;
+    align-items:center;font-family:'Montserrat',sans-serif;font-size:0.75rem;font-weight:600;
+    transition:background .2s}
+  .parados-dropdown-btn:hover{background:#293548}
+  .parados-dropdown-btn #parados-contador{color:#fde047;font-family:'Teko',sans-serif;font-size:1.1rem}
+  .parados-dropdown-content{display:none;max-height:240px;overflow-y:auto;background:rgba(0,0,0,.2);
+    border-radius:6px;margin-top:6px;padding:4px 10px}
+  .parados-dropdown-content.show{display:block}
+
   @media(max-width:768px){
-    .sidebar{width:100%;order:1;max-height:45vh}
+    .tab-btn{font-size:1rem;padding:9px 6px}
+
+    .sidebar{width:100%;order:1;max-height:48vh}
     #vista-mapa{flex-direction:column}
-    #map{order:2;flex:1;min-height:55vh}
+    #map{order:2;flex:1;min-height:52vh}
+
+    .resumen-cards{flex-wrap:wrap}
+    .stat-box{min-width:45%}
+
+    .modal-content{max-width:94vw;width:94vw;padding:16px;max-height:88vh}
+    .modal-title{font-size:1.5rem}
+    #mp-minimapa,#mb-minimapa{height:170px}
+
+    #vista-estadisticas{padding:12px;max-width:100%}
+    .est-chip{font-size:0.7rem;padding:6px 10px}
+    .est-resumen-top{flex-wrap:wrap;gap:8px}
+    .est-resumen-top .stat-box{min-width:45%}
+
+    .puerto-metrica,.est-puerto-metrica{min-width:44px}
+
+    .parados-dropdown-content{max-height:180px}
+  }
+
+  @media(max-width:420px){
+    h1{font-size:1.4rem}
+    .tab-btn{font-size:0.85rem}
+    .stat-box .num{font-size:1.25rem}
   }
 </style>
 </head>
@@ -237,9 +273,12 @@
         <div class="stat-box"><div class="num" id="card-top-puerto">–</div><div class="lbl">Top puerto hoy</div></div>
       </div>
 
-      <div class="legend-box" id="box-parados">
-        <div class="legend-title">Buques parados ahora (0 nudos)</div>
-        <div id="lista-parados" style="max-height:220px;overflow-y:auto;"></div>
+      <div class="parados-dropdown">
+        <button class="parados-dropdown-btn" id="parados-btn">
+          <span>⚓ <span id="parados-contador">–</span> a &lt;1000m, 0 nudos</span>
+          <span id="parados-arrow" style="transition:.3s;">&#9660;</span>
+        </button>
+        <div class="parados-dropdown-content" id="lista-parados"></div>
       </div>
 
       <div class="btn-container">
@@ -429,6 +468,13 @@
   document.getElementById("layer-btn").onclick = function () {
     const content = document.getElementById("layer-content");
     const arrow = document.getElementById("layer-arrow");
+    content.classList.toggle("show");
+    arrow.style.transform = content.classList.contains("show") ? "rotate(180deg)" : "rotate(0deg)";
+  };
+
+  document.getElementById("parados-btn").onclick = function () {
+    const content = document.getElementById("lista-parados");
+    const arrow = document.getElementById("parados-arrow");
     content.classList.toggle("show");
     arrow.style.transform = content.classList.contains("show") ? "rotate(180deg)" : "rotate(0deg)";
   };
@@ -770,8 +816,11 @@
     }
   }
 
+  const RADIO_PARADOS_M = 1000; // umbral para contar/listar como "cerca de un puerto"
+
   async function renderBuquesParados(combinados) {
     const cont = document.getElementById("lista-parados");
+    const contadorEl = document.getElementById("parados-contador");
     try {
       const coordsPuertos = await mpCargarCoordsPuertos(); // {nombre: [lat, lon]}
       const entradasPuertos = Object.entries(coordsPuertos);
@@ -788,6 +837,8 @@
           if (d < mejorDist) { mejorDist = d; mejorPuerto = nombre; }
         });
 
+        if (mejorDist > RADIO_PARADOS_M) return; // fuera del radio, no cuenta
+
         parados.push({
           mmsi, nombre: tgt.n && tgt.n.trim() ? tgt.n.trim() : `MMSI ${mmsi}`,
           puerto: mejorPuerto, distancia_m: Math.round(mejorDist),
@@ -795,9 +846,10 @@
       });
 
       parados.sort((a, b) => a.distancia_m - b.distancia_m);
+      contadorEl.textContent = parados.length;
 
       if (parados.length === 0) {
-        cont.innerHTML = "<p style='color:#94a3b8;font-size:0.7rem;'>Ningún buque con 0 nudos en esta corrida.</p>";
+        cont.innerHTML = "<p style='color:#94a3b8;font-size:0.7rem;padding:6px 0;'>Ningún buque a menos de 1000m de un puerto con 0 nudos en esta corrida.</p>";
         return;
       }
       cont.innerHTML = parados.map(p => `
@@ -810,6 +862,7 @@
         </div>
       `).join("");
     } catch (e) {
+      contadorEl.textContent = "–";
       cont.innerHTML = "<p style='color:#ef4444;font-size:0.7rem;'>Error calculando distancias a puerto.</p>";
       console.error("Error en renderBuquesParados:", e);
     }
