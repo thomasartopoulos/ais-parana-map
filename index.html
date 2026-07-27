@@ -144,6 +144,15 @@
 
   #est-status{font-size:0.8rem;color:#94a3b8;text-align:center;margin-top:20px}
 
+  .mp-buque-row{padding:8px 10px;background:#0f172a;border-radius:6px;margin-bottom:5px;
+    cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+    border:1px solid transparent;transition:.15s}
+  .mp-buque-row:hover{border-color:#eab308}
+  .mp-buque-row.activo{border-color:#eab308;background:#1e293b}
+  .mp-buque-nombre{font-size:0.78rem;color:#f8fafc;font-weight:600}
+  .mp-buque-sub{font-size:0.62rem;color:#94a3b8}
+  .mp-buque-dur{font-family:'Teko',sans-serif;font-size:1.1rem;color:#fde047}
+
   @media(max-width:768px){
     .sidebar{width:100%;order:1;max-height:45vh}
     #vista-mapa{flex-direction:column}
@@ -290,7 +299,7 @@
 </div>
 
 <div id="vista-estadisticas" class="tab-pane">
-  <h2>Ranking de puertos</h2>
+  <h2>Estadísticas</h2>
   <div class="est-updated" id="est-updated">Cargando...</div>
 
   <div class="est-controles">
@@ -308,29 +317,85 @@
         <input type="date" id="fechaHasta">
       </div>
     </div>
-
-    <div class="est-fila">
-      <label>Métrica</label>
-      <div class="est-chip-group" id="chipsMetrica">
-        <div class="est-chip activo" data-metrica="buques">Buques únicos</div>
-        <div class="est-chip" data-metrica="horas">Horas totales</div>
-        <div class="est-chip" data-metrica="visitas">Cantidad de visitas</div>
-      </div>
-    </div>
-
-    <div class="est-fila">
-      <label>Mostrar</label>
-      <div class="est-chip-group" id="chipsTopN">
-        <div class="est-chip" data-top="5">Top 5</div>
-        <div class="est-chip activo" data-top="10">Top 10</div>
-        <div class="est-chip" data-top="20">Top 20</div>
-      </div>
-    </div>
   </div>
 
-  <div class="est-resumen-top" id="estResumenTop"></div>
-  <div id="estRanking"></div>
+  <div class="est-chip-group" style="margin-bottom:12px;">
+    <div class="est-chip activo" id="subtab-puertos" data-subtab="puertos" style="flex:1;text-align:center;">⚓ Por puerto</div>
+    <div class="est-chip" id="subtab-buques" data-subtab="buques" style="flex:1;text-align:center;">🚢 Por buque</div>
+  </div>
+
+  <div id="subvista-puertos">
+    <div class="est-controles">
+      <div class="est-fila">
+        <label>Métrica</label>
+        <div class="est-chip-group" id="chipsMetrica">
+          <div class="est-chip activo" data-metrica="buques">Buques únicos</div>
+          <div class="est-chip" data-metrica="horas">Horas totales</div>
+          <div class="est-chip" data-metrica="visitas">Cantidad de visitas</div>
+        </div>
+      </div>
+
+      <div class="est-fila">
+        <label>Mostrar</label>
+        <div class="est-chip-group" id="chipsTopN">
+          <div class="est-chip" data-top="5">Top 5</div>
+          <div class="est-chip activo" data-top="10">Top 10</div>
+          <div class="est-chip" data-top="20">Top 20</div>
+          <div class="est-chip" data-top="todos">Todos los puertos</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="est-resumen-top" id="estResumenTop"></div>
+    <div id="estRanking"></div>
+  </div>
+
+  <div id="subvista-buques" style="display:none;">
+    <div class="est-controles">
+      <div class="est-fila">
+        <label>Mostrar</label>
+        <div class="est-chip-group" id="chipsTopNBuques">
+          <div class="est-chip" data-topb="10">Top 10</div>
+          <div class="est-chip activo" data-topb="20">Top 20</div>
+          <div class="est-chip" data-topb="todos">Todos los buques</div>
+        </div>
+      </div>
+    </div>
+    <div class="est-resumen-top" id="ebResumenTop"></div>
+    <div style="font-size:0.62rem;color:#94a3b8;margin-bottom:8px;">
+      Ordenado por cantidad de puertos <b>distintos</b> visitados en el período — los que rotan entre
+      varios puertos aparecen primero.
+    </div>
+    <div id="ebRanking"></div>
+  </div>
+
   <div id="est-status"></div>
+</div>
+
+<div id="modal-puerto" class="modal-overlay">
+  <div class="modal-content" style="max-width:640px;">
+    <button class="modal-close" onclick="cerrarModalPuerto()">&#215;</button>
+    <div class="modal-title" id="mp-titulo">Puerto</div>
+    <div id="mp-minimapa" style="height:220px;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#0f172a;"></div>
+    <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">
+      Buques en el período seleccionado — clic en uno para ver su track
+    </div>
+    <div id="mp-lista" style="max-height:260px;overflow-y:auto;"></div>
+    <div id="mp-track-status" style="font-size:0.7rem;color:#94a3b8;margin-top:8px;"></div>
+  </div>
+</div>
+
+<div id="modal-buque" class="modal-overlay">
+  <div class="modal-content" style="max-width:640px;">
+    <button class="modal-close" onclick="cerrarModalBuque()">&#215;</button>
+    <div class="modal-title" id="mb-titulo">Buque</div>
+    <div id="mb-minimapa" style="height:220px;border-radius:8px;overflow:hidden;margin-bottom:12px;background:#0f172a;"></div>
+    <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">
+      Itinerario de puertos en el período — clic en una escala para ver el track de ese tramo
+    </div>
+    <div id="mb-lista" style="max-height:260px;overflow-y:auto;"></div>
+    <div id="mb-track-status" style="font-size:0.7rem;color:#94a3b8;margin-top:8px;"></div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -760,7 +825,8 @@
   function statsRender() {
     const { filas, totalBuques, totalVisitas } = statsCalcularRanking();
     const campo = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "horas" : "visitas";
-    const top = filas.slice(0, statsEstado.topN);
+    const n = statsEstado.topN === "todos" ? filas.length : statsEstado.topN;
+    const top = filas.slice(0, n);
     const max = top.length ? Math.max(...top.map(f => f[campo])) : 1;
 
     document.getElementById("estResumenTop").innerHTML = `
@@ -779,7 +845,7 @@
       const sub = statsEstado.metrica === "buques" ? "buques" : statsEstado.metrica === "horas" ? "hs" : "visitas";
       const pct = Math.round((valor / max) * 100);
       return `
-        <div class="est-puerto-row">
+        <div class="est-puerto-row" data-puerto="${escapeHtml(f.puerto)}" style="cursor:pointer;">
           <div class="est-puerto-rank ${i < 3 ? 'top3' : ''}">${i + 1}</div>
           <div class="est-puerto-info">
             <div class="est-puerto-nombre">${escapeHtml(f.puerto)}</div>
@@ -788,6 +854,10 @@
           <div class="est-puerto-metrica"><div class="valor">${valor}</div><div class="sub">${sub}</div></div>
         </div>`;
     }).join("");
+
+    cont.querySelectorAll(".est-puerto-row").forEach(row => {
+      row.addEventListener("click", () => abrirModalPuerto(row.dataset.puerto));
+    });
   }
 
   function statsSetupChips(groupId, dataAttr, onSelect) {
@@ -807,7 +877,7 @@
     document.getElementById("rangoCustom").classList.toggle("show", v === "custom");
   });
   statsSetupChips("chipsMetrica", "metrica", v => statsEstado.metrica = v);
-  statsSetupChips("chipsTopN", "top", v => statsEstado.topN = parseInt(v, 10));
+  statsSetupChips("chipsTopN", "top", v => statsEstado.topN = (v === "todos" ? "todos" : parseInt(v, 10)));
   document.getElementById("fechaDesde").addEventListener("change", statsRender);
   document.getElementById("fechaHasta").addEventListener("change", statsRender);
 
@@ -833,6 +903,325 @@
       console.error(err);
     }
   }
+
+  // ---------- Modal de puerto: minimapa + lista de buques + track real ----------
+  let mpMapa = null;
+  let mpCapaTrack = null;
+  let mpMarcadorPuerto = null;
+  let mpPuertosCoords = null; // se llena la primera vez que hace falta
+  const mpCacheHistorico = {}; // "AAAA-MM-DD" -> json del dia, para no re-bajarlo
+
+  async function mpCargarCoordsPuertos() {
+    if (mpPuertosCoords) return mpPuertosCoords;
+    const resp = await fetch("data/puertos.geojson", { cache: "force-cache" });
+    const gj = await resp.json();
+    mpPuertosCoords = {};
+    gj.features.forEach(f => {
+      const [lon, lat] = f.geometry.coordinates;
+      mpPuertosCoords[f.properties.nombre] = [lat, lon];
+    });
+    return mpPuertosCoords;
+  }
+
+  function mpInicializarMapa(centro, divId, marcarPuerto) {
+    if (mpMapa) { mpMapa.remove(); }
+    mpMapa = L.map(divId, { zoomControl: false, attributionControl: false }).setView(centro, 13);
+    L.tileLayer(
+      "https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/argenmap_oscuro@EPSG%3A3857@png/{z}/{x}/{-y}.png",
+      { minZoom: 1, maxZoom: 18 }
+    ).addTo(mpMapa);
+    mpMarcadorPuerto = marcarPuerto ? L.circleMarker(centro, {
+      radius: 7, color: "#06222b", weight: 2, fillColor: "#eab308", fillOpacity: 1,
+    }).addTo(mpMapa) : null;
+    mpCapaTrack = L.layerGroup().addTo(mpMapa);
+  }
+
+  function mpDiasEntre(fechaIni, fechaFin) {
+    const dias = [];
+    let d = new Date(fechaIni + "T00:00:00Z");
+    const hasta = new Date(fechaFin + "T00:00:00Z");
+    while (d <= hasta) {
+      dias.push(d.toISOString().slice(0, 10));
+      d = new Date(d.getTime() + 86400000);
+    }
+    return dias;
+  }
+
+  async function mpCargarDiaHistorico(fecha) {
+    if (mpCacheHistorico[fecha]) return mpCacheHistorico[fecha];
+    const [anio, mes] = fecha.split("-");
+    const url = `${HIST_BASE}/historico/${anio}/${mes}/${fecha}.json`;
+    const resp = await fetch(url, { cache: "force-cache" });
+    if (!resp.ok) { mpCacheHistorico[fecha] = []; return []; }
+    const data = await resp.json();
+    mpCacheHistorico[fecha] = data;
+    return data;
+  }
+
+  async function mpMostrarTrack(visita, filaEl, opts) {
+    opts = opts || {};
+    const filaSelector = opts.filaSelector || ".mp-buque-row";
+    const statusId = opts.statusId || "mp-track-status";
+    document.querySelectorAll(filaSelector).forEach(r => r.classList.remove("activo"));
+    if (filaEl) filaEl.classList.add("activo");
+
+    const statusEl = document.getElementById(statusId);
+    statusEl.textContent = "Cargando track…";
+    mpCapaTrack.clearLayers();
+
+    try {
+      const fechaIni = visita.inicio.slice(0, 10);
+      const fechaFin = visita.fin.slice(0, 10);
+      const dias = mpDiasEntre(fechaIni, fechaFin);
+      const t0 = new Date(visita.inicio).getTime();
+      const t1 = new Date(visita.fin).getTime();
+
+      const puntos = [];
+      for (const dia of dias) {
+        const corridas = await mpCargarDiaHistorico(dia);
+        corridas.forEach(corrida => {
+          const ts = new Date(corrida.timestamp).getTime();
+          if (ts < t0 - 5 * 60000 || ts > t1 + 5 * 60000) return; // margen de 5 min
+
+          // el mismo buque puede aparecer en varias zonas a la vez (radares
+          // solapados); nos quedamos con el reporte de menor "a" (más fresco),
+          // igual criterio que usa el mapa en vivo para no duplicar puntos.
+          let mejorTgt = null;
+          Object.values(corrida.zonas || {}).forEach(dz => {
+            const tgt = (dz.tgts || {})[visita.mmsi];
+            if (tgt && typeof tgt.x === "number" && typeof tgt.y === "number") {
+              const edad = tgt.a ?? Infinity;
+              const edadMejor = mejorTgt ? (mejorTgt.a ?? Infinity) : Infinity;
+              if (!mejorTgt || edad < edadMejor) mejorTgt = tgt;
+            }
+          });
+          if (mejorTgt) {
+            puntos.push({ ts, lat: mejorTgt.y / ESCALA, lon: mejorTgt.x / ESCALA });
+          }
+        });
+      }
+      puntos.sort((a, b) => a.ts - b.ts);
+
+      if (puntos.length === 0) {
+        statusEl.textContent = "No se encontraron posiciones para este buque en ese rango (puede que el histórico de ese día no esté disponible).";
+        return;
+      }
+
+      const latlngs = puntos.map(p => [p.lat, p.lon]);
+      L.polyline(latlngs, { color: "#2fb6c9", weight: 3, opacity: 0.85 }).addTo(mpCapaTrack);
+      L.circleMarker(latlngs[0], { radius: 5, color: "#06222b", weight: 2, fillColor: "#22c55e", fillOpacity: 1 })
+        .bindPopup("Primera posición registrada").addTo(mpCapaTrack);
+      L.circleMarker(latlngs[latlngs.length - 1], { radius: 5, color: "#06222b", weight: 2, fillColor: "#ef4444", fillOpacity: 1 })
+        .bindPopup("Última posición registrada").addTo(mpCapaTrack);
+
+      const puntosBounds = mpMarcadorPuerto ? latlngs.concat([mpMarcadorPuerto.getLatLng()]) : latlngs;
+      mpMapa.fitBounds(L.latLngBounds(puntosBounds), { padding: [20, 20] });
+
+      statusEl.textContent = `${puntos.length} posiciones reales entre ${new Date(visita.inicio).toLocaleString("es-AR")} y ${new Date(visita.fin).toLocaleString("es-AR")}.`;
+    } catch (err) {
+      statusEl.textContent = "Error cargando el track: " + err.message;
+      console.error(err);
+    }
+  }
+
+  async function abrirModalPuerto(puerto) {
+    const coords = await mpCargarCoordsPuertos();
+    const centro = coords[puerto] || [-32.75, -60.7];
+
+    document.getElementById("mp-titulo").textContent = puerto;
+    document.getElementById("modal-puerto").style.display = "flex";
+    document.getElementById("mp-track-status").textContent = "";
+
+    setTimeout(() => {
+      mpInicializarMapa(centro, "mp-minimapa", true);
+      mpMapa.invalidateSize();
+    }, 50);
+
+    const [desde, hasta] = statsRangoDeFechas(statsEstado.periodo);
+    const visitasPuerto = statsVisitas
+      .filter(v => v.puerto === puerto)
+      .filter(v => { const t = new Date(v.inicio); return t >= desde && t <= hasta; })
+      .sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+
+    const lista = document.getElementById("mp-lista");
+    if (visitasPuerto.length === 0) {
+      lista.innerHTML = "<p style='color:#94a3b8;font-size:0.75rem;'>Sin buques en este período.</p>";
+      return;
+    }
+    lista.innerHTML = visitasPuerto.map((v, i) => `
+      <div class="mp-buque-row" data-idx="${i}">
+        <div>
+          <div class="mp-buque-nombre">${escapeHtml(v.nombre || ("MMSI " + v.mmsi))}</div>
+          <div class="mp-buque-sub">${new Date(v.inicio).toLocaleString("es-AR")} → ${new Date(v.fin).toLocaleString("es-AR")}</div>
+        </div>
+        <div class="mp-buque-dur">${v.duracion_horas}h</div>
+      </div>
+    `).join("");
+
+    lista.querySelectorAll(".mp-buque-row").forEach(row => {
+      row.addEventListener("click", () => mpMostrarTrack(visitasPuerto[+row.dataset.idx], row,
+        { filaSelector: "#mp-lista .mp-buque-row", statusId: "mp-track-status" }));
+    });
+
+    // Mostrar automaticamente el track del primero (mas reciente)
+    mpMostrarTrack(visitasPuerto[0], lista.querySelector(".mp-buque-row"),
+      { filaSelector: "#mp-lista .mp-buque-row", statusId: "mp-track-status" });
+  }
+
+  function cerrarModalPuerto() {
+    document.getElementById("modal-puerto").style.display = "none";
+  }
+  window.cerrarModalPuerto = cerrarModalPuerto;
+  document.getElementById("modal-puerto").onclick = function (e) {
+    if (e.target === this) cerrarModalPuerto();
+  };
+
+  // ---------- Sub-tabs: Por puerto / Por buque ----------
+  document.querySelectorAll("[data-subtab]").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("[data-subtab]").forEach(c => c.classList.remove("activo"));
+      chip.classList.add("activo");
+      const esBuques = chip.dataset.subtab === "buques";
+      document.getElementById("subvista-puertos").style.display = esBuques ? "none" : "block";
+      document.getElementById("subvista-buques").style.display = esBuques ? "block" : "none";
+      if (esBuques) statsRenderBuques();
+    });
+  });
+
+  let statsTopNBuques = 20;
+  document.querySelectorAll("#chipsTopNBuques .est-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#chipsTopNBuques .est-chip").forEach(c => c.classList.remove("activo"));
+      chip.classList.add("activo");
+      statsTopNBuques = chip.dataset.topb === "todos" ? "todos" : parseInt(chip.dataset.topb, 10);
+      statsRenderBuques();
+    });
+  });
+
+  // ---------- Ranking "Por buque": buques que rotan entre varios puertos ----------
+  function statsCalcularBuques() {
+    const [desde, hasta] = statsRangoDeFechas(statsEstado.periodo);
+    const enRango = statsVisitas.filter(v => {
+      const t = new Date(v.inicio);
+      return t >= desde && t <= hasta;
+    });
+
+    const porBuque = {};
+    enRango.forEach(v => {
+      const b = porBuque[v.mmsi] || (porBuque[v.mmsi] = {
+        mmsi: v.mmsi, nombre: v.nombre, puertos: new Set(), visitas: [], horas: 0,
+      });
+      b.puertos.add(v.puerto);
+      b.visitas.push(v);
+      b.horas += v.duracion_horas;
+      if (v.nombre && !b.nombre) b.nombre = v.nombre;
+    });
+
+    let filas = Object.values(porBuque).map(b => ({
+      mmsi: b.mmsi, nombre: b.nombre, puertosDistintos: b.puertos.size,
+      visitasCount: b.visitas.length, horas: Math.round(b.horas * 10) / 10,
+      visitas: b.visitas.sort((a, c) => new Date(a.inicio) - new Date(c.inicio)),
+    }));
+    filas.sort((a, b) => b.puertosDistintos - a.puertosDistintos || b.visitasCount - a.visitasCount);
+
+    return { filas, multiPuerto: filas.filter(f => f.puertosDistintos > 1).length };
+  }
+
+  function statsRenderBuques() {
+    const { filas, multiPuerto } = statsCalcularBuques();
+    const n = statsTopNBuques === "todos" ? filas.length : statsTopNBuques;
+    const top = filas.slice(0, n);
+    const max = top.length ? Math.max(...top.map(f => f.puertosDistintos)) : 1;
+
+    document.getElementById("ebResumenTop").innerHTML = `
+      <div class="stat-box"><div class="num">${filas.length}</div><div class="lbl">Buques con actividad</div></div>
+      <div class="stat-box"><div class="num">${multiPuerto}</div><div class="lbl">Visitaron 2+ puertos</div></div>
+    `;
+
+    const cont = document.getElementById("ebRanking");
+    if (top.length === 0) {
+      cont.innerHTML = "<p style='color:#94a3b8;text-align:center;'>Sin actividad en el período elegido.</p>";
+      return;
+    }
+    cont.innerHTML = top.map((f, i) => {
+      const pct = Math.round((f.puertosDistintos / max) * 100);
+      return `
+        <div class="est-puerto-row" data-mmsi="${escapeHtml(f.mmsi)}" style="cursor:pointer;">
+          <div class="est-puerto-rank ${i < 3 && f.puertosDistintos > 1 ? 'top3' : ''}">${i + 1}</div>
+          <div class="est-puerto-info">
+            <div class="est-puerto-nombre">${escapeHtml(f.nombre || ("MMSI " + f.mmsi))}</div>
+            <div class="est-barra-track"><div class="est-barra-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div class="est-puerto-metrica"><div class="valor">${f.puertosDistintos}</div><div class="sub">puertos</div></div>
+        </div>`;
+    }).join("");
+
+    cont.querySelectorAll(".est-puerto-row").forEach(row => {
+      row.addEventListener("click", () => abrirModalBuque(row.dataset.mmsi, filas.find(f => f.mmsi === row.dataset.mmsi)));
+    });
+  }
+
+  // ---------- Modal de buque: itinerario entre puertos ----------
+  async function abrirModalBuque(mmsi, datosBuque) {
+    if (!datosBuque) return;
+    const coords = await mpCargarCoordsPuertos();
+
+    document.getElementById("mb-titulo").textContent = datosBuque.nombre || `MMSI ${mmsi}`;
+    document.getElementById("modal-buque").style.display = "flex";
+    document.getElementById("mb-track-status").textContent = "";
+
+    const visitas = datosBuque.visitas; // ya ordenadas cronologicamente
+    const centro = coords[visitas[0].puerto] || [-32.75, -60.7];
+
+    setTimeout(() => {
+      mpInicializarMapa(centro, "mb-minimapa", false);
+      mpMapa.invalidateSize();
+      // marcar cada puerto de la ruta, numerado en orden cronologico
+      const puertosUnicos = [...new Set(visitas.map(v => v.puerto))];
+      const marcadores = [];
+      puertosUnicos.forEach((p, idx) => {
+        const c = coords[p];
+        if (!c) return;
+        const m = L.marker(c, {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="background:#eab308;color:#0f172a;border-radius:50%;width:22px;height:22px;
+              display:flex;align-items:center;justify-content:center;font-family:Teko,sans-serif;
+              font-size:0.9rem;font-weight:700;border:2px solid #06222b;">${idx + 1}</div>`,
+            iconSize: [22, 22], iconAnchor: [11, 11],
+          }),
+        }).bindPopup(`<div class="popup-title">${idx + 1}. ${escapeHtml(p)}</div>`).addTo(mpMapa);
+        marcadores.push(m);
+      });
+      if (marcadores.length) {
+        mpMapa.fitBounds(L.latLngBounds(marcadores.map(m => m.getLatLng())), { padding: [30, 30] });
+      }
+    }, 50);
+
+    const lista = document.getElementById("mb-lista");
+    lista.innerHTML = visitas.map((v, i) => `
+      <div class="mp-buque-row" data-idx="${i}">
+        <div>
+          <div class="mp-buque-nombre">${i + 1}. ${escapeHtml(v.puerto)}</div>
+          <div class="mp-buque-sub">${new Date(v.inicio).toLocaleString("es-AR")} → ${new Date(v.fin).toLocaleString("es-AR")}</div>
+        </div>
+        <div class="mp-buque-dur">${v.duracion_horas}h</div>
+      </div>
+    `).join("");
+
+    lista.querySelectorAll(".mp-buque-row").forEach(row => {
+      row.addEventListener("click", () => mpMostrarTrack(visitas[+row.dataset.idx], row,
+        { filaSelector: "#mb-lista .mp-buque-row", statusId: "mb-track-status" }));
+    });
+  }
+
+  function cerrarModalBuque() {
+    document.getElementById("modal-buque").style.display = "none";
+  }
+  window.cerrarModalBuque = cerrarModalBuque;
+  document.getElementById("modal-buque").onclick = function (e) {
+    if (e.target === this) cerrarModalBuque();
+  };
 </script>
 
 </body>
